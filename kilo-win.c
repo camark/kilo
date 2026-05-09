@@ -167,6 +167,9 @@ enum KEY_ACTION{
 };
 
 void editorSetStatusMessage(const char *fmt, ...);
+char* editorPromptFilename(void);
+char* editorRowsToString(int *buflen);
+void editorSelectSyntaxHighlight(char *filename);
 
 /* =========================== Syntax highlights DB =========================
  *
@@ -1030,7 +1033,7 @@ int editorOpen(char *filename) {
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave(void) {
     /* If filename is unknown.txt, prompt user for a new name */
-    if (E.filename && strcmp(E.filename, "unknown.txt") == 0) {
+    if (E.filename != NULL && strcmp(E.filename, "unknown.txt") == 0) {
         char *new_filename = editorPromptFilename();
         if (new_filename == NULL) {
             editorSetStatusMessage("Save canceled");
