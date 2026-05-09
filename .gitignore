@@ -1,1 +1,13 @@
 kilo
+kilo.exe
+kilo-win
+kilo-win.exe
+*.o
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+a
+a.exe
+a.out
