@@ -1029,6 +1029,20 @@ int editorOpen(char *filename) {
 
 /* Save the current file on disk. Return 0 on success, 1 on error. */
 int editorSave(void) {
+    /* If filename is unknown.txt, prompt user for a new name */
+    if (E.filename && strcmp(E.filename, "unknown.txt") == 0) {
+        char *new_filename = editorPromptFilename();
+        if (new_filename == NULL) {
+            editorSetStatusMessage("Save canceled");
+            return 1;
+        }
+        /* Update filename */
+        free(E.filename);
+        E.filename = malloc(strlen(new_filename) + 1);
+        strcpy(E.filename, new_filename);
+        editorSelectSyntaxHighlight(E.filename);
+    }
+
     int len;
     char *buf = editorRowsToString(&len);
     int fd = open(E.filename,O_RDWR|O_CREAT|O_BINARY,0644);
@@ -1042,7 +1056,7 @@ int editorSave(void) {
     close(fd);
     free(buf);
     E.dirty = 0;
-    editorSetStatusMessage("%d bytes written on disk", len);
+    editorSetStatusMessage("%d bytes written to %s", len, E.filename);
     return 0;
 
 writeerr:
@@ -1307,6 +1321,39 @@ void editorFind(void) {
     }
 }
 
+/* Prompt user for filename input */
+char* editorPromptFilename(void) {
+    static char filename[KILO_QUERY_LEN+1] = {0};
+    int qlen = 0;
+
+    /* Save the cursor position */
+    int saved_cx = E.cx, saved_cy = E.cy;
+    int saved_coloff = E.coloff, saved_rowoff = E.rowoff;
+
+    while(1) {
+        editorSetStatusMessage(
+            "Save as: %s (ESC to cancel, Enter to save)", filename);
+        editorRefreshScreen();
+
+        int c = editorReadKey();
+        if (c == DEL_KEY || c == CTRL_H || c == BACKSPACE) {
+            if (qlen != 0) filename[--qlen] = '\0';
+        } else if (c == ESC) {
+            /* Cancel */
+            return NULL;
+        } else if (c == ENTER) {
+            if (qlen > 0) {
+                return filename;
+            }
+        } else if (isprint(c)) {
+            if (qlen < KILO_QUERY_LEN) {
+                filename[qlen++] = c;
+                filename[qlen] = '\0';
+            }
+        }
+    }
+}
+
 /* ========================= Editor events handling  ======================== */
 
 /* Handle cursor position change because arrow keys were pressed. */
@@ -1499,14 +1546,22 @@ void initEditor(void) {
 }
 
 int main(int argc, char **argv) {
+    char *filename;
     if (argc != 2) {
-        fprintf(stderr,"Usage: kilo <filename>\n");
-        exit(1);
+        filename = "unknown.txt";
+    } else {
+        filename = argv[1];
     }
 
     initEditor();
-    editorSelectSyntaxHighlight(argv[1]);
-    editorOpen(argv[1]);
+    editorSelectSyntaxHighlight(filename);
+    if (argc == 2) {
+        editorOpen(filename);
+    } else {
+        /* Set default filename for new file */
+        E.filename = malloc(strlen(filename) + 1);
+        strcpy(E.filename, filename);
+    }
     enableRawMode();
     editorSetStatusMessage(
         "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
